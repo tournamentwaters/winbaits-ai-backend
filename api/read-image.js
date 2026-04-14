@@ -1,9 +1,3 @@
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -25,51 +19,10 @@ export default async function handler(req) {
     return jsonResponse({ error: "POST only" }, 405);
   }
 
-  try {
-    const body = await req.json().catch(() => null);
-
-    if (!body || !body.imageBase64) {
-      return jsonResponse({ error: "Missing imageBase64" }, 400);
-    }
-
-    const response = await client.responses.create({
-      model: "gpt-4.1-mini",
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: 'Return ONLY JSON: {"summary":"short","image_type":"lure|water scene|fish|boat|person|object|unknown","objects":["a","b"],"confidence":"85%"}'
-            },
-            {
-              type: "input_image",
-              image_url: body.imageBase64
-            }
-          ]
-        }
-      ],
-      text: {
-        format: {
-          type: "json_object"
-        }
-      },
-      max_output_tokens: 120
-    });
-
-    const text = response.output_text || "{}";
-    const data = JSON.parse(text);
-
-    return jsonResponse({
-      summary: data.summary || "Image analyzed",
-      image_type: data.image_type || "unknown",
-      objects: Array.isArray(data.objects) ? data.objects : [],
-      confidence: data.confidence || "60%"
-    });
-  } catch (err) {
-    return jsonResponse({
-      error: "Backend failed",
-      details: err.message || "Unknown error"
-    }, 500);
-  }
+  return jsonResponse({
+    summary: "Test response works",
+    image_type: "object",
+    objects: ["test item", "image loaded"],
+    confidence: "99%"
+  });
 }
