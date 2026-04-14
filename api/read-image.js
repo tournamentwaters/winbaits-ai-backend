@@ -20,9 +20,9 @@ export default async function handler(req) {
   }
 
   return jsonResponse({
-    summary: "Test response works",
+    summary: "Instant backend test worked",
     image_type: "object",
-    objects: ["test item", "image loaded"],
+    objects: ["backend reached", "app connected"],
     confidence: "99%"
   });
 }
