@@ -4,31 +4,65 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
 
+export default async function handler(req) {
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return jsonResponse({ ok: true });
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return jsonResponse({ error: "POST only" }, 405);
   }
 
   try {
-    const { imageBase64 } = req.body;
+    const body = await req.json().catch(() => null);
+
+    if (!body) {
+      return jsonResponse({ error: "Invalid JSON body" }, 400);
+    }
+
+    const { imageBase64 } = body;
+
+    if (!imageBase64) {
+      return jsonResponse({ error: "Missing imageBase64" }, 400);
+    }
+
+    if (!imageBase64.startsWith("data:image")) {
+      return jsonResponse({ error: "Invalid image format" }, 400);
+    }
 
     const response = await client.responses.create({
-      model: "gpt-5.4-mini",
+      model: "gpt-4.1-mini",
       input: [
         {
           role: "user",
           content: [
             {
               type: "input_text",
-              text: "Analyze this fishing scene. Return JSON with clarity, cover, bankType, skySeen, confidence, tags, and summary."
+              text: `
+Look at this fishing image and return ONLY JSON.
+
+{
+  "summary": "short description",
+  "clarity": "clear | stained | muddy",
+  "cover": "grass | wood | rock | docks | open",
+  "bankType": "shallow | steep | flat",
+  "lure_name": "name or Unknown",
+  "lure_type": "spinnerbait | jig | worm | crankbait | unknown",
+  "confidence": "75%"
+}
+              `
             },
             {
               type: "input_image",
@@ -36,15 +70,37 @@ export default async function handler(req, res) {
             }
           ]
         }
-      ]
+      ],
+      text: { format: { type: "json_object" } },
+      max_output_tokens: 300,
     });
 
-    const result = JSON.parse(response.output_text);
+    const text = response.output_text || "{}";
 
-    return res.status(200).json(result);
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return jsonResponse({
+        error: "Bad AI response",
+        details: text
+      }, 500);
+    }
 
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ error: "Failed" });
+    return jsonResponse({
+      summary: data.summary || "Scene analyzed",
+      clarity: data.clarity || "unknown",
+      cover: data.cover || "unknown",
+      bankType: data.bankType || "unknown",
+      lure_name: data.lure_name || "Unknown",
+      lure_type: data.lure_type || "unknown",
+      confidence: data.confidence || "60%"
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      error: "Backend failed",
+      details: err.message
+    }, 500);
   }
 }
