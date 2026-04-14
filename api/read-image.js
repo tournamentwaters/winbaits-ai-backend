@@ -40,30 +40,21 @@ export default async function handler(req) {
           content: [
             {
               type: "input_text",
-              text: `
-Look at this image and return ONLY valid JSON.
-
-{
-  "summary": "short plain English description",
-  "image_type": "fishing lure | water scene | fish | boat | person | object | unknown",
-  "objects": ["item 1", "item 2", "item 3"],
-  "confidence": "85%"
-}
-              `.trim(),
+              text: 'Return ONLY JSON: {"summary":"short","image_type":"lure|water scene|fish|boat|person|object|unknown","objects":["a","b"],"confidence":"85%"}'
             },
             {
               type: "input_image",
-              image_url: body.imageBase64,
-            },
-          ],
-        },
+              image_url: body.imageBase64
+            }
+          ]
+        }
       ],
       text: {
         format: {
-          type: "json_object",
-        },
+          type: "json_object"
+        }
       },
-      max_output_tokens: 250,
+      max_output_tokens: 120
     });
 
     const text = response.output_text || "{}";
@@ -73,12 +64,12 @@ Look at this image and return ONLY valid JSON.
       summary: data.summary || "Image analyzed",
       image_type: data.image_type || "unknown",
       objects: Array.isArray(data.objects) ? data.objects : [],
-      confidence: data.confidence || "60%",
+      confidence: data.confidence || "60%"
     });
   } catch (err) {
     return jsonResponse({
       error: "Backend failed",
-      details: err.message || "Unknown error",
+      details: err.message || "Unknown error"
     }, 500);
   }
 }
